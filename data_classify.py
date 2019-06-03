@@ -83,7 +83,7 @@ if single_xg_switch:
 #%% XGBoost, but run only once, cross validated, Recursive feature selection
 import xgboost as xgb
 
-single_xg_switch_rfe = True
+single_xg_switch_rfe = False
 if single_xg_switch_rfe:
     max_depth = 7
     bootstrap = False
@@ -264,13 +264,14 @@ if single_light_switch:
 # %% lightgbm, but random grid search and cross validated
 import lightgbm as lgb
 
-cv_xg_switch = False
+cv_xg_switch = True
 kf = KFold(n_splits=10)
 
 best_score = 0.
 
 if cv_xg_switch:
     for i in range(100):
+        corr_th: float = 0.90
         # boosting_type = random.choice(['gbdt', 'dart', 'goss', 'rf'])
         num_leaves = random.choice(np.arange(3, 46, 6))
         max_depth = random.choice(np.arange(1, 15, 2))
