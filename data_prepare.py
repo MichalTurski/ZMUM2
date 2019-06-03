@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from boruta import BorutaPy
 from sklearn.ensemble import RandomForestClassifier
+from sklearn import linear_model
+from sklearn.feature_selection import RFE
 
 
 class CorrelationRemover:
@@ -38,9 +40,6 @@ class CorrelationRemover:
         return len(self.to_remove)
 
 
-
-
-
 class DataTransformerBoruta:
     def __init__(self, corr_th, n_est=500, seed=123):
         self.boruta = True
@@ -68,6 +67,34 @@ class DataTransformerBoruta:
 
     def get_selected_num(self):
         return self.feature_selector.n_features_ - self.corr_rem.get_removed_num()
+
+
+class DataTransformerRFE:
+    def __init__(self, corr_th, features_num):
+        self.corr_rem = CorrelationRemover(corr_th)
+        model = linear_model.LogisticRegression()
+        self.feature_selector = RFE(model, features_num)
+
+    def fit_transform(self, X, y):
+        X_arr = np.array(X)
+        y_arr = np.array(y).reshape(-1)
+        self.feature_selector.fit(X_arr, y_arr)
+        X_columns = X.columns
+        selected_columns = X_columns[self.feature_selector.support_]
+        X = X[selected_columns]
+        X = self.corr_rem.fit_transform(X)
+        return X
+
+    def transform(self, X):
+        X_columns = X.columns
+        selected_columns = X_columns[self.feature_selector.support_]
+        X = X[selected_columns]
+        X = self.corr_rem.transform(X)
+        return X
+
+    def get_selected_num(self):
+        return self.feature_selector.n_features_ - self.corr_rem.get_removed_num()
+
 
 
 
