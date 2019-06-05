@@ -264,12 +264,12 @@ if single_light_switch:
 # %% lightgbm, but random grid search and cross validated
 import lightgbm as lgb
 
-cv_xg_switch = True
+cv_lgbm_switch = False
 kf = KFold(n_splits=10)
 
 best_score = 0.
 
-if cv_xg_switch:
+if cv_lgbm_switch:
     for i in range(100):
         corr_th: float = 0.90
         # boosting_type = random.choice(['gbdt', 'dart', 'goss', 'rf'])
@@ -332,6 +332,57 @@ if cv_xg_switch:
     print(f"Best score = {best_score}, params = {best_num_leaves}, "
           f"{best_max_depth}, {best_learning_rate}, {best_n_estimators},"
           f"{best_min_child_samples}, {best_reg_alpha}, {best_reg_lambda}")
+
+#%% LightGBM, but run only once, cross validated, Recursive feature selection
+
+single_lgbm_switch_rfe = True
+if single_lgbm_switch_rfe:
+    num_leaves = 21
+    max_depth = 9
+    learning_rate = 0.113
+    n_estimators = 195
+    min_child_samples = 15
+    reg_alpha = 0.021
+    reg_lambda = 0.042
+    features_num = 20
+    corr_th = 0.90
+
+    results = []
+    selected = []
+    kf = KFold(n_splits=10)
+    for train, test in kf.split(X):
+        X_train = X.iloc[train, :]
+        X_test = X.iloc[test, :]
+        y_train = y.iloc[train, :]
+        y_test = y.iloc[test, :]
+
+        data_transformer = data_prepare.DataTransformerRFE(corr_th, features_num)
+        X_train = data_transformer.fit_transform(X_train, y_train)
+        X_test = data_transformer.transform(X_test)
+
+        lg_clas = lgb.LGBMClassifier(  # boosting_type=boosting_type,
+            num_leaves=num_leaves,
+            max_depth=max_depth,
+            learning_rate=learning_rate,
+            n_estimators=n_estimators,
+            min_child_samples=min_child_samples,
+            reg_alpha=reg_alpha,
+            reg_lambda=reg_lambda,
+            n_jobs=8)
+        lg_clas.fit(X_train, y_train)
+
+        # print(xg_clas.predict_proba(X_test))
+        # print_classifier_scores(xg_clas, X_train, y_train, X_test, y_test)
+        results.append(balanced_scorer(lg_clas, X_test, y_test))
+        selected.append(data_transformer.get_selected_num())
+
+    curr_score = stat.mean(results)
+    dev = stat.stdev(results)
+    print(f"Score = {curr_score}, deviation = {dev}")
+
+    mean_selected = stat.mean(selected)
+    dev_selected = stat.stdev(selected)
+    print(f"Selected mean = {mean_selected}, deviation = {dev_selected}")
 
 # %% XGBoost, final classifier
 import xgboost as xgb
