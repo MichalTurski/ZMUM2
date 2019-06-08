@@ -39,6 +39,8 @@ class CorrelationRemover:
     def get_removed_num(self):
         return len(self.to_remove)
 
+    def get_removed_vec(self):
+        return self.to_remove
 
 class DataTransformerBoruta:
     def __init__(self, corr_th, n_est=500, seed=123):
@@ -67,6 +69,13 @@ class DataTransformerBoruta:
 
     def get_selected_num(self):
         return self.feature_selector.n_features_ - self.corr_rem.get_removed_num()
+
+    def get_selected_vec(self, X):
+        col_names = X.columns
+        selected_columns = col_names[self.feature_selector.support_]
+        cor_removed = self.corr_rem.get_removed_vec()
+        selected_columns = set(selected_columns) - set(cor_removed)
+        return (np.array(list(selected_columns)) + 1) # +1 is because we count coumnf from 1.
 
 
 class DataTransformerRFE:

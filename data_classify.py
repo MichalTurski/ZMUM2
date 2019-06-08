@@ -9,6 +9,7 @@ from sklearn.model_selection import KFold
 import statistics as stat
 import random as random
 from numpy.random import uniform
+import copy
 
 #%% Ignore warnings
 import warnings
@@ -17,7 +18,7 @@ warnings.filterwarnings("ignore")
 # %% Import file with pandas
 train_data = pd.read_csv('artificial_train.data', delim_whitespace=True, header=None)
 train_labels = pd.read_csv('artificial_train.labels', header=None)
-valid_data = pd.read_csv("artificial_train.labels", header=None)
+valid_data = pd.read_csv("artificial_valid.data", delim_whitespace=True, header=None)
 
 #%% Rename dataset
 X = train_data
@@ -335,7 +336,7 @@ if cv_lgbm_switch:
 
 #%% LightGBM, but run only once, cross validated, Recursive feature selection
 
-single_lgbm_switch_rfe = True
+single_lgbm_switch_rfe = False
 if single_lgbm_switch_rfe:
     num_leaves = 21
     max_depth = 9
@@ -387,20 +388,25 @@ if single_lgbm_switch_rfe:
 # %% XGBoost, final classifier
 import xgboost as xgb
 
-final_xg_switch = False
+final_xg_switch = True
 if final_xg_switch:
-    max_depth = 7
+    max_depth = 9
     bootstrap = False
-    min_samples_leaf = 1
-    min_samples_split = 5
-    n_estimators = 103
-    eta = 0.0222
-    gamma = 0.094
-    subsample = 0.8567
-    colsample_bytree = 0.5106
+    min_samples_leaf = 2
+    min_samples_split = 10
+    n_estimators = 173
+    eta = 0.0255
+    gamma = 0.0464
+    subsample = 0.7711
+    colsample_bytree = 0.7802
+    corr_th = 0.90
+
+    data_transformer = data_prepare.DataTransformerBoruta(corr_th)
 
     X_train = X
     y_train = y
+    X_test = valid_data
+    X_copy = copy.copy(X_test)
     X_train = data_transformer.fit_transform(X_train, y_train)
     X_test = data_transformer.transform(X_test)
 
@@ -417,8 +423,12 @@ if final_xg_switch:
                                 n_jobs=8)
     xg_clas.fit(X_train, y_train)
 
+    print(f"result on train set: {balanced_scorer(xg_clas, X_train, y_train)}")
+
     probas = xg_clas.predict_proba(X_test)[:, 1]
-    np.savetxt("MICTUR.txt", probas, fmt='%1.8f')
+    selected_variables = data_transformer.get_selected_vec(X_copy)
+    np.savetxt("MICTUR_artificial_prediction.txt", probas, fmt='%1.8f')
+    np.savetxt("MICTUR_artificial_features.txt", selected_variables, fmt='%d')
 
 
 
